@@ -105,8 +105,17 @@ function _removeJsComments(str) {
 }
 
 function _loadAndParseConfig(filePath) {
-  return filePath && fs.existsSync(filePath) ?
-    JSON.parse(_removeJsComments(fs.readFileSync(filePath, "utf-8"))) : {};
+    if (!filePath) {
+	return {};
+    }
+    try {
+	var rc = JSON.parse(_removeJsComments(fs.readFileSync(filePath, "utf-8")));
+	console.log("Using jshintrc: " + filePath);
+	return rc;
+    } catch (err) {
+	console.error("Could not load jshintrc:" + err);
+	return {};
+    }
 }
 
 function _getConfig(filePath) {
