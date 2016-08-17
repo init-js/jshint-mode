@@ -43,7 +43,8 @@ var http = require('http'),
     formidable = require('formidable'),
     fs = require('fs'),
     JSLINT = require('./jslint'),
-    JSHINT = require('./jshint');
+    JSHINT = require('./jshint.2.9.2'),
+    JSHINT_OLD = require('./jshint.old');
 
 if (!fs.existsSync) {
   fs.existsSync = require('path').existsSync;
@@ -51,7 +52,8 @@ if (!fs.existsSync) {
 
 var hinters = {
   jshint: JSHINT.JSHINT,
-  jslint: JSLINT.JSLINT
+  jslint: JSLINT.JSLINT,
+  jshint_old: JSHINT_OLD.JSHINT
 };
 
 function getOpt(key) {
