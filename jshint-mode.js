@@ -42,6 +42,7 @@
 var http = require('http'),
     formidable = require('formidable'),
     fs = require('fs'),
+    C = require('constants'),
     JSLINT = require('./jslint'),
     JSHINT = require('./jshint.2.9.2'),
     JSHINT_OLD = require('./jshint.old');
@@ -104,32 +105,70 @@ function _removeJsComments(str) {
   return str;
 }
 
-function _loadAndParseConfig(filePath) {
-    if (!filePath) {
-	return {};
-    }
-    try {
-	var rc = JSON.parse(_removeJsComments(fs.readFileSync(filePath, "utf-8")));
-	console.log("Using jshintrc: " + filePath);
-	return rc;
-    } catch (err) {
-	console.error("Could not load jshintrc:" + err);
-	return {};
-    }
-}
-
 function _getConfig(filePath) {
-  if (config[filePath]) {
-    return config[filePath];
-  }else{
-    return config[filePath] = _loadAndParseConfig(filePath);
+
+  // detect file changes without accessing content.
+  function _statChanged(s, other) {
+    if (!other) {
+      return true;
+    }
+
+    // Most changes detected:
+    //   - overwrite file with a newer file (mv or cp)
+    //   - overwrite file with an older file (mv or cp)
+    //   - file size changed (regardless of mtime)
+    //   - file edited in place and mtime updated
+    return (s.dev !== other.dev ||
+	    s.ino !== other.ino ||
+	    s.size !== other.size ||
+	    s.mtime.getTime() !== other.mtime.getTime());
   }
+
+  /**
+     Try reading the hinter configuration file (e.g. .jshintrc).
+     Return config object and its fs.Stats.
+  */
+  function _refreshConfig(filePath) {
+
+    if (!filePath) {
+      return {cfg: {}, stat: null};
+    }
+
+    var prev = _cache[filePath] || {cfg: {}, stat: null};
+    var fd = -1;
+
+    try {
+      fd = fs.openSync(filePath, C.O_RDONLY);
+      var statbuf = fs.fstatSync(fd);
+
+      if (_statChanged(statbuf, prev.stat)) {
+	var rc = JSON.parse(_removeJsComments(fs.readFileSync(fd, "utf-8")));
+	console.log("Loading jshintrc: " + filePath);
+	return {cfg: rc, stat: statbuf};
+      }
+
+      prev.stat = statbuf;
+      return prev;
+
+    } catch (err) {
+      console.error("Could not load jshintrc:" + err);
+      return prev;
+    } finally {
+      if (fd > -1) {
+	try { fs.closeSync(fd); }
+	catch (err) {}
+      }
+    }
+  }
+
+  _cache[filePath] = _refreshConfig(filePath);
+  return _cache[filePath].cfg;
 }
 
 var port = parseInt(getOpt("--port"), 10) || 3003,
 lastPort = parseInt(getOpt("--lastport"),10) || 3003,
     host = getOpt("--host") || "127.0.0.1",
-    config = {};
+    _cache = {};
 
 var server = http.createServer(function(req, res) {
   if (req.url === '/check' && req.method.toUpperCase() === 'POST') {
