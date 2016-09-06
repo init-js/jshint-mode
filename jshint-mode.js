@@ -130,8 +130,6 @@ function _getConfig(filePath) {
   */
   function _refreshConfig(filePath) {
 
-    console.log("filepath:", filePath);
-
     if (!filePath) {
       return {cfg: {}, stat: null};
     }
