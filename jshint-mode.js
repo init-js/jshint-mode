@@ -130,6 +130,8 @@ function _getConfig(filePath) {
   */
   function _refreshConfig(filePath) {
 
+    console.log("filepath:", filePath);
+
     if (!filePath) {
       return {cfg: {}, stat: null};
     }
@@ -151,6 +153,11 @@ function _getConfig(filePath) {
       return prev;
 
     } catch (err) {
+      var stack = err.stack.replace(/^[^\(]+?[\n$]/gm, '')
+        .replace(/^\s+at\s+/gm, '')
+        .replace(/^Object.<anonymous>\s*\(/gm, '{anonymous}()@')
+        .split('\n');
+      console.log(stack);
       console.error("Could not load jshintrc:" + err);
       return prev;
     } finally {
